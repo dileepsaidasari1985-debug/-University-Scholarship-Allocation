@@ -1,10 +1,12 @@
 # Output Screenshots
 
-No synthetic or placeholder screenshots were generated.
+Real application screenshots captured from the live University Scholarship Allocation System (`http://127.0.0.1:5000`):
 
-Live browser screenshot capture could not be completed automatically because Chrome remote debugging (`DevToolsActivePort`) was not active in the local Chrome profile during the verification step.
-
-To capture real screenshots of the running application:
-1. Ensure the Flask server is running (`python app.py` from `scholarship-system`).
-2. Open `http://127.0.0.1:5000` in your browser.
-3. Capture screenshots of the Dashboard, Add Application, Applicants, Rankings, Rules, and Reports pages into this folder.
+1. **Dashboard Overview (Desktop):** ![Dashboard](01_dashboard.png)
+2. **Add Student Application Form & Live Preview:** ![Add Student](02_add_student.png)
+3. **Applicant Management & Filters:** ![Applicants](03_applicants.png)
+4. **Student Evaluation Profile & Award Banner:** ![Student Details](04_student_details.png)
+5. **Rankings, Tie-Breaking & Rejected Reasons:** ![Rankings](05_rankings.png)
+6. **Configurable Scholarship Rules:** ![Rules](06_rules.png)
+7. **Analytics & Printable Reports:** ![Reports](07_reports.png)
+8. **Mobile Responsive View (390×844):** ![Mobile Dashboard](08_mobile_dashboard.png)
