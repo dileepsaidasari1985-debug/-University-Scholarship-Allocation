@@ -476,6 +476,33 @@ class TestFlaskAppAndDatabase(unittest.TestCase):
         with vc.get("/static/css/style.css") as css_resp:
             self.assertEqual(css_resp.status_code, 200)
 
+    def test_21_double_submit_csrf_survives_secret_key_rotation(self):
+        # Simulate Vercel cold-start where POST hits a worker with a new random secret_key
+        rot_dir = tempfile.TemporaryDirectory()
+        try:
+            rot_db = os.path.join(rot_dir.name, "rot.db")
+            app_a = create_app(db_path=rot_db, seed_if_empty=True)
+            app_a.config["TESTING"] = True
+            client_a = app_a.test_client()
+            page = client_a.get("/add")
+            token = re.search(rb'name="csrf_token"\s+value="([^"]+)"', page.data).group(1).decode("utf-8")
+
+            # Extract csrf_cookie set by worker A and send it to worker B (different secret_key)
+            app_b = create_app(db_path=rot_db, seed_if_empty=True)
+            app_b.config["TESTING"] = True
+            client_b = app_b.test_client()
+            client_b.set_cookie("csrf_cookie", token)
+            ok_resp = client_b.post(
+                "/add",
+                data=make_student_payload(student_id="VERCEL1", full_name="Serverless Test", csrf_token=token),
+                follow_redirects=True,
+            )
+            self.assertEqual(ok_resp.status_code, 200)
+            self.assertIn(b"Serverless Test", ok_resp.data)
+            self.assertIsNotNone(get_student_by_id("VERCEL1", rot_db))
+        finally:
+            rot_dir.cleanup()
+
 
 if __name__ == "__main__":
     unittest.main()

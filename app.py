@@ -15,6 +15,7 @@ from flask import (
     Response,
     abort,
     flash,
+    g,
     redirect,
     render_template,
     request,
@@ -50,22 +51,61 @@ from scholarship_logic import (
 
 def create_app(db_path=None, seed_if_empty=True):
     """Create and configure the Flask application instance."""
-    app = Flask(__name__)
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    app = Flask(
+        __name__,
+        template_folder=os.path.join(base_dir, "templates"),
+        static_folder=os.path.join(base_dir, "static"),
+    )
 
     # Avoid hardcoded secret keys; read from environment or generate runtime key
     app.secret_key = os.environ.get("FLASK_SECRET_KEY") or secrets.token_hex(32)
     app.config["DB_PATH"] = db_path or DEFAULT_DB_PATH
+    app.config["SEED_IF_EMPTY"] = seed_if_empty
 
     # Initialize SQLite database and tables automatically on startup
     init_db(app.config["DB_PATH"], seed_if_empty=seed_if_empty)
 
+    @app.before_request
+    def ensure_db_exists():
+        """Re-initialize SQLite if running on an ephemeral /tmp serverless directory."""
+        if not os.path.exists(app.config["DB_PATH"]):
+            init_db(app.config["DB_PATH"], seed_if_empty=app.config["SEED_IF_EMPTY"])
+
+    def get_csrf_token():
+        """Return a stable CSRF token via double-submit cookie (serverless-safe) and session."""
+        cached = getattr(g, "_csrf_token", None)
+        if cached:
+            return cached
+        token = request.cookies.get("csrf_cookie") or session.get("csrf_token")
+        if not token:
+            token = secrets.token_hex(16)
+            g._set_csrf_cookie = True
+        elif not request.cookies.get("csrf_cookie"):
+            g._set_csrf_cookie = True
+        g._csrf_token = token
+        session["csrf_token"] = token
+        return token
+
+    @app.after_request
+    def attach_csrf_cookie(response):
+        """Attach the double-submit CSRF cookie so POST forms survive serverless cold starts."""
+        token = getattr(g, "_csrf_token", None)
+        if token and getattr(g, "_set_csrf_cookie", False):
+            response.set_cookie(
+                "csrf_cookie",
+                token,
+                httponly=True,
+                samesite="Lax",
+                path="/",
+            )
+        return response
+
     @app.context_processor
     def inject_globals():
         """Inject CSRF token, helper formatters, and metadata into all templates."""
-        if "csrf_token" not in session:
-            session["csrf_token"] = secrets.token_hex(16)
         return {
-            "csrf_token": session["csrf_token"],
+            "csrf_token": get_csrf_token(),
             "format_inr": format_inr,
             "departments": DEPARTMENTS,
             "academic_years": ACADEMIC_YEARS,
@@ -75,12 +115,17 @@ def create_app(db_path=None, seed_if_empty=True):
         }
 
     def verify_csrf():
-        """Validate CSRF token on mutating POST requests."""
+        """Validate CSRF token using double-submit cookie or session token."""
         if app.config.get("WTF_CSRF_DISABLED"):
             return True
-        expected = session.get("csrf_token", "")
         submitted = request.form.get("csrf_token", "")
-        return bool(expected and submitted and secrets.compare_digest(expected, submitted))
+        if not submitted:
+            return False
+        cookie_token = request.cookies.get("csrf_cookie", "")
+        session_token = session.get("csrf_token", "")
+        cookie_ok = bool(cookie_token and secrets.compare_digest(cookie_token, submitted))
+        session_ok = bool(session_token and secrets.compare_digest(session_token, submitted))
+        return cookie_ok or session_ok
 
     def get_evaluated_state():
         """Load students and rules from SQLite and run the Python ranking engine."""
