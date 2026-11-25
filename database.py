@@ -6,11 +6,33 @@ rule persistence, student CRUD operations, and realistic sample data loading.
 """
 
 import os
+import shutil
 import sqlite3
+import tempfile
 from scholarship_logic import DEFAULT_RULES, SUBJECT_TUPLE, calculate_academic_totals
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-DEFAULT_DB_PATH = os.path.join(BASE_DIR, "database", "scholarship.db")
+BUNDLED_DB_PATH = os.path.join(BASE_DIR, "database", "scholarship.db")
+
+
+def resolve_default_db_path():
+    """
+    Use database/scholarship.db locally; on read-only serverless environments
+    (e.g., Vercel), copy the seeded database into the writable temp directory.
+    """
+    db_dir = os.path.dirname(BUNDLED_DB_PATH)
+    is_vercel = bool(os.environ.get("VERCEL") or os.environ.get("VERCEL_ENV"))
+    is_writable = os.path.isdir(db_dir) and os.access(db_dir, os.W_OK)
+
+    if is_vercel or not is_writable:
+        tmp_db = os.path.join(tempfile.gettempdir(), "scholarship.db")
+        if not os.path.exists(tmp_db) and os.path.exists(BUNDLED_DB_PATH):
+            shutil.copy2(BUNDLED_DB_PATH, tmp_db)
+        return tmp_db
+    return BUNDLED_DB_PATH
+
+
+DEFAULT_DB_PATH = resolve_default_db_path()
 
 
 # 18 realistic sample students demonstrating:

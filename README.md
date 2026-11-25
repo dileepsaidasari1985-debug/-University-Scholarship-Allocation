@@ -85,8 +85,16 @@ Open your browser and visit: **http://127.0.0.1:5000**
 2. Run: `cloudflared tunnel --url http://127.0.0.1:5000`
 3. Share the generated `https://*.trycloudflare.com` link (stays active while your PC and terminal are running).
 
-### Option B: Permanent 24/7 Cloud Hosting (Render / Railway / PythonAnywhere)
-The repository includes [`wsgi.py`](wsgi.py), [`Procfile`](Procfile), and `gunicorn` in [`requirements.txt`](requirements.txt) for Linux PaaS hosts (`web: gunicorn wsgi:app`). Note that free ephemeral-disk hosts reset SQLite on redeploy; use a persistent disk or PythonAnywhere for persistent SQLite storage.
+### Option B: Deploy with Vercel (GitHub Integration)
+1. Sign in at **https://vercel.com** and click **Add New → Project**.
+2. Import your GitHub repository (`dileepsaidasari1985-debug/-University-Scholarship-Allocation`).
+3. Leave Framework Preset as **Other** (configured automatically via [`vercel.json`](vercel.json) and [`api/index.py`](api/index.py)).
+4. *(Recommended)* Under **Environment Variables**, add `FLASK_SECRET_KEY` with a random string so sessions/CSRF stay consistent across serverless workers.
+5. Click **Deploy**.
+*(Note: Vercel's filesystem is read-only, so `database.py` copies the seeded SQLite database into `/tmp/scholarship.db` automatically—changes live inside `/tmp` per instance and reset on cold starts.)*
+
+### Option C: Permanent 24/7 Cloud Hosting (Render / Railway / PythonAnywhere)
+The repository includes [`wsgi.py`](wsgi.py), [`Procfile`](Procfile), and `gunicorn` in [`requirements.txt`](requirements.txt) for Linux PaaS hosts (`web: gunicorn wsgi:app`). Use a persistent disk or PythonAnywhere for permanent SQLite writes across restarts.
 
 ---
 

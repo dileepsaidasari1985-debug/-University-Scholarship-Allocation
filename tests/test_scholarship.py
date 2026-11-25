@@ -465,6 +465,17 @@ class TestFlaskAppAndDatabase(unittest.TestCase):
         finally:
             csrf_dir.cleanup()
 
+    def test_20_vercel_entrypoint_serves_pages(self):
+        from api.index import app as vercel_app
+
+        vercel_app.config["TESTING"] = True
+        vc = vercel_app.test_client()
+        resp = vc.get("/")
+        self.assertEqual(resp.status_code, 200)
+        self.assertIn(b"Scholarship Overview", resp.data)
+        with vc.get("/static/css/style.css") as css_resp:
+            self.assertEqual(css_resp.status_code, 200)
+
 
 if __name__ == "__main__":
     unittest.main()
