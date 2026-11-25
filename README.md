@@ -88,8 +88,8 @@ Open your browser and visit: **http://127.0.0.1:5000**
 ### Option B: Deploy with Vercel (GitHub Integration)
 1. Sign in at **https://vercel.com** and click **Add New → Project**.
 2. Import your GitHub repository (`dileepsaidasari1985-debug/-University-Scholarship-Allocation`).
-3. Leave Framework Preset as **Other** (configured automatically via [`vercel.json`](vercel.json) and [`api/index.py`](api/index.py)).
-4. *(Recommended)* Under **Environment Variables**, add `FLASK_SECRET_KEY` with a random string so sessions/CSRF stay consistent across serverless workers.
+3. Leave Framework Preset as **Other** and Root Directory as `./` (configured via [`vercel.json`](vercel.json) to build [`app.py`](app.py) with `@vercel/python`, bundle `templates/`, `static/`, and `database/`, and route all paths directly to Flask without rewriting `PATH_INFO`).
+4. *(Optional)* Under **Environment Variables**, add `FLASK_SECRET_KEY` with a random string.
 5. Click **Deploy**.
 *(Note: Vercel's filesystem is read-only, so `database.py` copies the seeded SQLite database into `/tmp/scholarship.db` automatically—changes live inside `/tmp` per instance and reset on cold starts.)*
 

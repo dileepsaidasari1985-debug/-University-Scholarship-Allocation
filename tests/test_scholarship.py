@@ -503,6 +503,37 @@ class TestFlaskAppAndDatabase(unittest.TestCase):
         finally:
             rot_dir.cleanup()
 
+    def test_22_vercel_json_routes_and_static_bundle(self):
+        import json
+
+        vercel_cfg_path = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+            "vercel.json",
+        )
+        with open(vercel_cfg_path, "r", encoding="utf-8") as f:
+            cfg = json.load(f)
+
+        self.assertEqual(cfg["builds"][0]["src"], "app.py")
+        self.assertEqual(cfg["builds"][0]["use"], "@vercel/python")
+        include_files = cfg["builds"][0]["config"]["includeFiles"]
+        self.assertIn("templates/**", include_files)
+        self.assertIn("static/**", include_files)
+        self.assertIn("database/**", include_files)
+        self.assertEqual(cfg["routes"][0]["dest"], "app.py")
+
+    def test_23_404_page_and_all_pages_static_urls(self):
+        not_found = self.client.get("/student/NONEXISTENT999")
+        self.assertEqual(not_found.status_code, 404)
+        self.assertIn(b"404", not_found.data)
+        self.assertIn(b"Return to Dashboard", not_found.data)
+
+        for route in ("/", "/add", "/applicants", "/rankings", "/rules", "/reports"):
+            resp = self.client.get(route)
+            self.assertEqual(resp.status_code, 200)
+            self.assertIn(b"/static/css/style.css", resp.data)
+            self.assertIn(b"/static/js/script.js", resp.data)
+            self.assertIn(b"/static/images/university_crest.svg", resp.data)
+
 
 if __name__ == "__main__":
     unittest.main()
